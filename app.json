@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Vouched",
+    "slug": "vouched",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app_Icon.png",
+    "scheme": "vouched",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vouched.dev",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FDFBF7",
+        "foregroundImage": "./assets/images/app_Icon.png",
+        "resizeMode": "contain"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.vouched.dev"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/app_Icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash_Icon.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#2D3854",
+          "dark": {
+            "backgroundColor": "#2D3854"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d10b44ac-545c-4bcb-b819-64abe59efcf2"
+      },
+      "clerkPublishableKey": "pk_test_bGl2ZS1sYW1wcmV5LTcxLmNsZXJrLmFjY291bnRzLmRldiQ"
+    },
+    "owner": "techticbrijen"
+  }
+}
