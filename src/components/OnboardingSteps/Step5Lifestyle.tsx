@@ -44,7 +44,12 @@ export const Step5Lifestyle: React.FC<Step5Props> = ({
   const showCannabis420 = data.cannabisUse !== "NO";
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={globalStyles.mainTitle}>Lifestyle</Text>
       <Text style={globalStyles.subTitle}>
         Tell us about your lifestyle preferences
@@ -206,6 +211,8 @@ export const Step5Lifestyle: React.FC<Step5Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: size.scale(20),
   },
 });

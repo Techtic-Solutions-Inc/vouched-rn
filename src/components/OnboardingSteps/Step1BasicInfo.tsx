@@ -45,7 +45,12 @@ export const Step1BasicInfo: React.FC<Step1Props> = ({
   minDate.setFullYear(minDate.getFullYear() - 100);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={globalStyles.mainTitle}>Basic Information</Text>
       <Text style={globalStyles.subTitle}>Tell us about yourself</Text>
 
@@ -122,7 +127,6 @@ export const Step1BasicInfo: React.FC<Step1Props> = ({
         onChangeText={(text) => updateField("zipCode", text.replace(/\D/g, ""))}
         placeholder="Enter zip code"
         keyboardType="numeric"
-        maxLength={5}
         error={errors.zipCode}
         required
       />
@@ -145,6 +149,8 @@ export const Step1BasicInfo: React.FC<Step1Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: size.scale(20),
   },
 });

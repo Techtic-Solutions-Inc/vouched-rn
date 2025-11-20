@@ -50,8 +50,6 @@ export const validateStep1 = (data: OnboardingData['step1']): Partial<Record<key
 
   if (!data.zipCode?.trim()) {
     errors.zipCode = 'Zip code is required';
-  } else if (!/^\d{5}$/.test(data.zipCode)) {
-    errors.zipCode = 'Please enter a valid 5-digit zip code';
   }
 
   if (!data.maxDistance || data.maxDistance < 5) {

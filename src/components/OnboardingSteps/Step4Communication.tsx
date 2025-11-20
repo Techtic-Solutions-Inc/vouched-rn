@@ -28,7 +28,12 @@ export const Step4Communication: React.FC<Step4Props> = ({
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={globalStyles.mainTitle}>Communication Style</Text>
       <Text style={globalStyles.subTitle}>How do you communicate?</Text>
 
@@ -59,6 +64,8 @@ export const Step4Communication: React.FC<Step4Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: size.scale(20),
   },
 });

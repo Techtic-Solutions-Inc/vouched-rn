@@ -40,7 +40,12 @@ export const Step8Practical: React.FC<Step8Props> = ({
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={globalStyles.mainTitle}>
         Practical Matters & Final Preferences
       </Text>
@@ -195,6 +200,8 @@ export const Step8Practical: React.FC<Step8Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: size.scale(20),
   },
 });

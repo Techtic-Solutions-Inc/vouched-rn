@@ -1,7 +1,7 @@
 import { useSignIn, useSignUp } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,11 +9,13 @@ import {
   TextInput as RNTextInput,
   SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextInput } from "../../components/Input";
 import { useToast } from "../../components/Toast";
 import { COLORS } from "../../constants/colors";
@@ -27,6 +29,8 @@ const SignInScreen = () => {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { signUp, setActive: setActiveSignUp } = useSignUp();
   const { showSuccess, showError, showInfo } = useToast();
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -190,20 +194,52 @@ const SignInScreen = () => {
     try {
       // Format phone number with country code in E.164 format
       const cleanedPhoneNumber = signUpPhoneNumber.replace(/\D/g, "");
-      const formattedPhoneNumber = `${signUpCountryCode}${cleanedPhoneNumber}`;
+
+      // Ensure country code starts with + and doesn't have duplicate +
+      const cleanCountryCode = signUpCountryCode.startsWith("+")
+        ? signUpCountryCode
+        : `+${signUpCountryCode}`;
+
+      const formattedPhoneNumber = `${cleanCountryCode}${cleanedPhoneNumber}`;
 
       console.log("Phone number details:", {
         countryCode: signUpCountryCode,
+        cleanCountryCode: cleanCountryCode,
         phoneNumber: signUpPhoneNumber,
         cleaned: cleanedPhoneNumber,
         formatted: formattedPhoneNumber,
+        formattedLength: formattedPhoneNumber.length,
       });
+
+      // Validate E.164 format (should be + followed by 1-15 digits)
+      if (!/^\+[1-9]\d{1,14}$/.test(formattedPhoneNumber)) {
+        const errorMsg =
+          "Invalid phone number format. Please use international format (e.g., +1234567890)";
+        setSignUpErrors({ phoneNumber: errorMsg });
+        showError(errorMsg);
+        setIsLoading(false);
+        return;
+      }
 
       const result = await signUp.create({
         emailAddress: signUpEmail,
         password: signUpPassword,
         phoneNumber: formattedPhoneNumber,
       });
+
+      console.log("=== SIGN UP RESULT DEBUG ===");
+      console.log("Sign up result:", {
+        status: result.status,
+        phoneNumber: result.phoneNumber,
+        unverifiedFields: result.unverifiedFields,
+      });
+
+      // Log phone number details
+      if (result.phoneNumber) {
+      } else {
+        console.warn("WARNING: No phone number found in sign up result!");
+      }
+      console.log("=== END SIGN UP RESULT DEBUG ===");
 
       // Send email verification
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
@@ -331,9 +367,36 @@ const SignInScreen = () => {
       ) {
         // Phone number needs verification - send SMS code
         try {
-          await signUp.preparePhoneNumberVerification({
-            strategy: "phone_code",
+          console.log("=== PHONE VERIFICATION DEBUG ===");
+          console.log("Preparing phone number verification...");
+          console.log("SignUp object:", {
+            status: signUp.status,
+            phoneNumber: signUp.phoneNumber,
+            unverifiedFields: signUp.unverifiedFields,
           });
+
+          // Check if phone number exists
+          if (!signUp.phoneNumber) {
+            const errorMsg =
+              "Phone number not found. Please try signing up again with your phone number.";
+            console.error("ERROR: No phone number found in signUp object");
+            showError(errorMsg);
+            setSignUpErrors({ phoneNumber: errorMsg });
+            setIsLoading(false);
+            return;
+          }
+
+          const phoneVerificationResult =
+            await signUp.preparePhoneNumberVerification({
+              strategy: "phone_code",
+            });
+
+          console.log(
+            "Phone verification preparation result:",
+            phoneVerificationResult
+          );
+          console.log("=== END PHONE VERIFICATION DEBUG ===");
+
           // Clear email verification state FIRST, then switch to phone verification
           setVerificationCode("");
           setPhoneVerificationCode("");
@@ -344,8 +407,64 @@ const SignInScreen = () => {
           setVerificationType("phone");
           showSuccess("SMS verification code sent! Please check your phone.");
         } catch (phoneErr: any) {
+          console.error("=== PHONE VERIFICATION ERROR ===");
           console.error("Phone verification preparation error:", phoneErr);
-          showError("Failed to send SMS code. Please try again.");
+          console.error("Error details:", JSON.stringify(phoneErr, null, 2));
+
+          if (phoneErr.errors) {
+            phoneErr.errors.forEach((error: any) => {
+              console.error("Individual error:", {
+                code: error.code,
+                message: error.message,
+                longMessage: error.longMessage,
+                meta: error.meta,
+              });
+            });
+          }
+          console.error("=== END PHONE VERIFICATION ERROR ===");
+
+          let errorMessage = "Failed to send SMS code. Please try again.";
+
+          if (phoneErr.errors) {
+            phoneErr.errors.forEach((error: any) => {
+              const errMsg = error.message || error.longMessage || "";
+              const errCode = error.code || "";
+
+              console.error(
+                "Phone verification error:",
+                errMsg,
+                "Code:",
+                errCode
+              );
+
+              // Check for specific Clerk error codes
+              if (
+                errCode === "form_identifier_not_found" ||
+                errMsg.toLowerCase().includes("not found") ||
+                errMsg.toLowerCase().includes("phone number not found")
+              ) {
+                errorMessage =
+                  "Phone number not found. Please try signing up again.";
+              } else if (
+                errCode === "form_phone_number_invalid" ||
+                errMsg.toLowerCase().includes("invalid phone")
+              ) {
+                errorMessage =
+                  "Invalid phone number format. Please check your number.";
+              } else if (
+                errMsg.toLowerCase().includes("sms") ||
+                errMsg.toLowerCase().includes("phone") ||
+                errMsg.toLowerCase().includes("number")
+              ) {
+                errorMessage = errMsg;
+              }
+            });
+          } else if (phoneErr.message) {
+            errorMessage = phoneErr.message;
+          }
+
+          showError(errorMessage);
+          setSignUpErrors({ phoneNumber: errorMessage });
         }
       } else if (signUp.status === "complete") {
         // All verifications complete - get session ID
@@ -391,9 +510,19 @@ const SignInScreen = () => {
           // If phone_number is in unverifiedFields, prepare phone verification
           if (signUp.unverifiedFields.includes("phone_number")) {
             try {
-              await signUp.preparePhoneNumberVerification({
-                strategy: "phone_code",
-              });
+              console.log("Preparing phone number verification (fallback)...");
+              console.log("Phone number from signUp:", signUp.phoneNumber);
+
+              const phoneVerificationResult =
+                await signUp.preparePhoneNumberVerification({
+                  strategy: "phone_code",
+                });
+
+              console.log(
+                "Phone verification preparation result:",
+                phoneVerificationResult
+              );
+
               // Clear email verification state FIRST, then switch to phone verification
               setVerificationCode("");
               setPhoneVerificationCode("");
@@ -406,8 +535,36 @@ const SignInScreen = () => {
                 "SMS verification code sent! Please check your phone."
               );
             } catch (phoneErr: any) {
-              console.error("Phone verification preparation error:", phoneErr);
-              showError(`Please verify: ${signUp.unverifiedFields.join(", ")}`);
+              console.error(
+                "Phone verification preparation error (fallback):",
+                phoneErr
+              );
+              console.error(
+                "Error details:",
+                JSON.stringify(phoneErr, null, 2)
+              );
+
+              let errorMessage = `Please verify: ${signUp.unverifiedFields.join(
+                ", "
+              )}`;
+
+              if (phoneErr.errors) {
+                phoneErr.errors.forEach((error: any) => {
+                  const errMsg = error.message || error.longMessage || "";
+                  if (
+                    errMsg.toLowerCase().includes("phone") ||
+                    errMsg.toLowerCase().includes("sms") ||
+                    errMsg.toLowerCase().includes("number")
+                  ) {
+                    errorMessage = errMsg;
+                  }
+                });
+              } else if (phoneErr.message) {
+                errorMessage = phoneErr.message;
+              }
+
+              showError(errorMessage);
+              setSignUpErrors({ phoneNumber: errorMessage });
             }
           } else {
             showError(`Please verify: ${signUp.unverifiedFields.join(", ")}`);
@@ -474,12 +631,34 @@ const SignInScreen = () => {
         });
         showSuccess("Verification code resent! Please check your email.");
       } else {
+        console.log("Resending phone verification code...");
+        console.log("Phone number from signUp:", signUp.phoneNumber);
+
         await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
         showSuccess("SMS code resent! Please check your phone.");
       }
     } catch (err: any) {
       console.error("Resend code error:", err);
-      showError("Failed to resend code. Please try again.");
+      console.error("Error details:", JSON.stringify(err, null, 2));
+
+      let errorMessage = "Failed to resend code. Please try again.";
+
+      if (err.errors) {
+        err.errors.forEach((error: any) => {
+          const errMsg = error.message || error.longMessage || "";
+          if (
+            errMsg.toLowerCase().includes("phone") ||
+            errMsg.toLowerCase().includes("sms") ||
+            errMsg.toLowerCase().includes("number")
+          ) {
+            errorMessage = errMsg;
+          }
+        });
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      showError(errorMessage);
     }
   };
 
@@ -512,13 +691,10 @@ const SignInScreen = () => {
         const sessionId = signUp.createdSessionId;
         if (sessionId) {
           await setActiveSignUp({ session: sessionId });
-          await setAuthenticated();
+          // await setAuthenticated();
           showSuccess("Phone verified successfully!");
-          // Small delay to ensure state is updated before navigation
-
-          isSignUp
-            ? router.replace("/Auth/onBoarding")
-            : router.replace("/(tabs)");
+          // Navigate to onboarding after successful sign-up and phone verification
+          router.replace("/Auth/onBoarding");
         } else {
           showError("Session not created. Please try signing up again.");
         }
@@ -526,13 +702,10 @@ const SignInScreen = () => {
         const sessionId = completeSignUp.createdSessionId;
         if (sessionId) {
           await setActiveSignUp({ session: sessionId });
-          await setAuthenticated();
+          //  await setAuthenticated();
           showSuccess("Phone verified successfully!");
-          // Small delay to ensure state is updated before navigation
-
-          isSignUp
-            ? router.replace("/Auth/onBoarding")
-            : router.replace("/(tabs)");
+          // Navigate to onboarding after successful sign-up and phone verification
+          router.replace("/Auth/onBoarding");
         } else {
           showError("Session not created. Please try signing up again.");
         }
@@ -596,18 +769,49 @@ const SignInScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[
+        styles.container,
+        {
+          paddingTop: Platform.OS === "android" ? insets.top : 0,
+        },
+      ]}
+    >
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={COLORS.white}
+        translucent={Platform.OS === "android"}
+      />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollViewRef}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop:
+                Platform.OS === "android" ? size.verticalScale(20) : 0,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {!pendingVerification && !pendingPhoneVerification && (
-            <View style={styles.header}>
+            <View
+              style={[
+                styles.header,
+                {
+                  marginTop:
+                    Platform.OS === "android"
+                      ? size.verticalScale(10)
+                      : size.verticalScale(30),
+                },
+              ]}
+            >
               <Text style={styles.title}>
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </Text>
@@ -644,6 +848,13 @@ const SignInScreen = () => {
                     <Text style={styles.emailText}>
                       {signUpCountryCode}
                       {signUpPhoneNumber}
+                    </Text>
+                    <Text style={styles.helpText}>
+                      If you don't receive the code, check your network
+                      connection or try resending. Make sure your phone number
+                      is correct and can receive SMS messages.{"\n\n"}
+                      Note: In test mode, SMS may not be enabled. Check your
+                      Clerk dashboard settings.
                     </Text>
                   </View>
 
@@ -886,6 +1097,12 @@ const SignInScreen = () => {
                     autoCapitalize="none"
                     error={signUpErrors.confirmPassword}
                     required
+                    onFocus={() => {
+                      // Scroll to show the input when keyboard opens
+                      setTimeout(() => {
+                        scrollViewRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
+                    }}
                   />
 
                   <TouchableOpacity
@@ -989,10 +1206,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: size.moderateScale(20),
+    paddingBottom: size.verticalScale(100),
   },
   header: {
-    marginTop:
-      Platform.OS === "ios" ? size.verticalScale(30) : size.verticalScale(20),
     marginBottom: size.verticalScale(32),
   },
   title: {
@@ -1116,6 +1332,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.Medium,
     color: COLORS.black,
     textAlign: "center",
+  },
+  helpText: {
+    fontSize: fontSize.light,
+    fontFamily: fonts.Regular,
+    color: COLORS.lightGray,
+    textAlign: "center",
+    marginTop: size.verticalScale(12),
+    paddingHorizontal: size.moderateScale(20),
+    lineHeight: size.verticalScale(18),
   },
   codeInputContainer: {
     width: "100%",

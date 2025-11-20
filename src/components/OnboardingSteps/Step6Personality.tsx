@@ -41,7 +41,12 @@ export const Step6Personality: React.FC<Step6Props> = ({
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={globalStyles.mainTitle}>Personality & Values</Text>
       <Text style={globalStyles.subTitle}>What makes you, you?</Text>
 
@@ -207,6 +212,8 @@ export const Step6Personality: React.FC<Step6Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: size.scale(20),
   },
 });

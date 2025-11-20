@@ -1,7 +1,7 @@
 import { COLORS } from "@/src/constants/colors";
 import fonts from "@/src/constants/fonts";
 import { fontSize } from "@/src/constants/fontSize";
-import { setOnboardingComplete } from "@/src/utils/auth";
+import { setAuthenticated, setOnboardingComplete } from "@/src/utils/auth";
 import { size } from "@/src/utils/size";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,6 +10,8 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -249,6 +251,7 @@ const OnBoardingScreen = () => {
 
       // Mark onboarding as complete
       await setOnboardingComplete();
+      await setAuthenticated();
 
       // Clear saved progress
       await AsyncStorage.removeItem(STORAGE_KEY);
@@ -411,69 +414,79 @@ const OnBoardingScreen = () => {
         },
       ]}
     >
-      <TouchableOpacity
-        onPress={handleBack}
-        disabled={currentStep === 1}
-        style={[
-          styles.button,
-          styles.backButton,
-          currentStep === 1 && styles.buttonDisabled,
-        ]}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={10}
       >
-        <Ionicons
-          name="chevron-back"
-          size={20}
-          color={currentStep === 1 ? COLORS.lightGray : COLORS.gray}
-        />
-      </TouchableOpacity>
-      <View style={styles.header}>
-        <View style={styles.progressContainer}>
-          <View style={styles.stepIndicators}>
-            {Array.from({ length: TOTAL_STEPS }, (_, index) => {
-              const stepNumber = index + 1;
-              const isCompleted = stepNumber < currentStep;
-              const isCurrent = stepNumber === currentStep;
-              const isLast = stepNumber === TOTAL_STEPS;
-              return (
-                <View
-                  key={stepNumber}
-                  style={[
-                    styles.stepPill,
-                    !isLast && styles.stepPillMargin,
-                    (isCompleted || isCurrent) && styles.stepPillActive,
-                    !isCompleted && !isCurrent && styles.stepPillInactive,
-                  ]}
-                />
-              );
-            })}
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.content}>{renderStep()}</View>
-
-      <View style={styles.footer}>
         <TouchableOpacity
+          onPress={handleBack}
+          disabled={currentStep === 1}
           style={[
             styles.button,
-            styles.nextButton,
-            isSaving && styles.buttonDisabled,
+            styles.backButton,
+            currentStep === 1 && styles.buttonDisabled,
           ]}
-          onPress={handleNext}
-          disabled={isSaving}
         >
-          {isSaving ? (
-            <ActivityIndicator size="small" color={COLORS.white} />
-          ) : (
-            <>
-              <Text style={styles.nextButtonText}>
-                {currentStep === TOTAL_STEPS ? "Submit" : "Next"}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.white} />
-            </>
-          )}
+          <Ionicons
+            name="chevron-back"
+            size={20}
+            color={currentStep === 1 ? COLORS.lightGray : COLORS.gray}
+          />
         </TouchableOpacity>
-      </View>
+        <View style={styles.header}>
+          <View style={styles.progressContainer}>
+            <View style={styles.stepIndicators}>
+              {Array.from({ length: TOTAL_STEPS }, (_, index) => {
+                const stepNumber = index + 1;
+                const isCompleted = stepNumber < currentStep;
+                const isCurrent = stepNumber === currentStep;
+                const isLast = stepNumber === TOTAL_STEPS;
+                return (
+                  <View
+                    key={stepNumber}
+                    style={[
+                      styles.stepPill,
+                      !isLast && styles.stepPillMargin,
+                      (isCompleted || isCurrent) && styles.stepPillActive,
+                      !isCompleted && !isCurrent && styles.stepPillInactive,
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.content}>{renderStep()}</View>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.nextButton,
+              isSaving && styles.buttonDisabled,
+            ]}
+            onPress={handleNext}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <>
+                <Text style={styles.nextButtonText}>
+                  {currentStep === TOTAL_STEPS ? "Submit" : "Next"}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={COLORS.white}
+                />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -482,6 +495,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  keyboardView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

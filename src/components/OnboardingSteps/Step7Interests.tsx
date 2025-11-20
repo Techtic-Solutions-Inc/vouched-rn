@@ -63,7 +63,12 @@ export const Step7Interests: React.FC<Step7Props> = ({
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={globalStyles.mainTitle}>Interests & Community</Text>
       <Text style={globalStyles.subTitle}>What are you passionate about?</Text>
 
@@ -219,6 +224,8 @@ export const Step7Interests: React.FC<Step7Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: size.scale(20),
   },
 

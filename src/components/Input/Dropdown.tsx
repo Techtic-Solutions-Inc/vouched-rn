@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import {
   FlatList,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -108,6 +109,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
               keyExtractor={(item) => item.value}
               bounces={false}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingBottom:
+                  Platform.OS === "ios" ? 0 : size.verticalScale(20),
+              }}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
